@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja" data-mode="dream">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#c9c7c2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GHOST KIOSK">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="GHOST KIOSK">
+  <title>GHOST KIOSK</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="paper-field" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <main class="app-shell">
+    <header class="masthead">
+      <div class="wordmark" aria-label="Ghost Kiosk">
+        <span class="ghost-word">GHOST</span>
+        <span class="kiosk-word">KIOSK</span>
+      </div>
+      <div class="issue-mark" aria-hidden="true"><b>GK</b><span>17.1</span></div>
+      <button id="openPhotoTop" class="open-top" type="button" aria-label="写真を選択">OPEN</button>
+    </header>
+
+    <section class="image-world" id="stage" aria-label="image stage">
+      <div id="canvasMount" class="canvas-mount"></div>
+
+      <div id="emptyState" class="empty-state">
+        <div class="optical-glyph" aria-hidden="true">
+          <svg viewBox="0 0 320 320" role="img" aria-label="">
+            <g class="glyph-back">
+              <rect x="58" y="58" width="204" height="204" rx="2" transform="rotate(-7 160 160)"/>
+              <rect x="94" y="36" width="52" height="248" rx="1" transform="rotate(10 120 160)"/>
+            </g>
+            <g class="glyph-core">
+              <ellipse cx="154" cy="158" rx="62" ry="50"/>
+              <ellipse cx="171" cy="151" rx="37" ry="30"/>
+              <path d="M74 194 C108 133 205 100 251 128 C217 142 202 166 203 203 C159 185 116 188 74 194 Z"/>
+              <path d="M101 92 C139 75 206 78 239 103 C198 106 170 120 150 150 C136 126 119 108 101 92 Z"/>
+            </g>
+            <g class="glyph-detail">
+              <circle cx="171" cy="151" r="12"/>
+              <rect x="218" y="210" width="44" height="16" transform="rotate(-17 240 218)"/>
+              <path d="M57 228 L114 210 L106 244 Z"/>
+            </g>
+          </svg>
+        </div>
+        <button id="openPhotoPrimary" class="open-primary" type="button">OPEN</button>
+      </div>
+
+      <div class="mutation-veil" aria-hidden="true"></div>
+      <div id="renderOverlay" class="render-overlay" hidden><span class="activity-indicator"></span><span id="renderLabel">MUTATING</span></div>
+    </section>
+
+    <section class="control-sheet" aria-label="Ghost Kiosk controls">
+      <nav class="modes" role="group" aria-label="加工モード">
+        <button class="mode active" type="button" data-mode="DREAM" aria-pressed="true"><span>DREAM</span></button>
+        <button class="mode" type="button" data-mode="OCCULT" aria-pressed="false"><span>OCCULT</span></button>
+        <button class="mode" type="button" data-mode="GHOST" aria-pressed="false"><span>GHOST</span></button>
+        <button class="mode" type="button" data-mode="REASSEMBLE" aria-pressed="false"><span>REASSEMBLE</span></button>
+      </nav>
+
+      <button id="mutateButton" class="mutate-button" type="button">
+        <span class="mutate-word">MUTATE</span>
+        <span class="mutate-mark" aria-hidden="true"><i></i><i></i></span>
+      </button>
+
+      <div class="utility-row">
+        <button id="backButton" class="utility" type="button" disabled>BACK</button>
+        <button id="editToggle" class="utility" type="button" aria-expanded="false" aria-controls="editPanel">EDIT <span id="editChevron">＋</span></button>
+        <button id="saveButton" class="utility" type="button" disabled>SAVE</button>
+      </div>
+
+      <section id="editPanel" class="edit-panel" hidden>
+        <div class="parameter">
+          <div class="parameter-head"><label for="transformSlider">TRANSFORM</label><output id="transformValue" for="transformSlider">90</output></div>
+          <input id="transformSlider" type="range" min="0" max="100" value="90" step="1">
+        </div>
+        <div class="parameter">
+          <div class="parameter-head"><label for="colorSlider">COLOR</label><output id="colorValue" for="colorSlider">78</output></div>
+          <input id="colorSlider" type="range" min="0" max="100" value="78" step="1">
+        </div>
+        <div class="parameter">
+          <div class="parameter-head"><label for="depthSlider">DEPTH</label><output id="depthValue" for="depthSlider">88</output></div>
+          <input id="depthSlider" type="range" min="0" max="100" value="88" step="1">
+        </div>
+        <div class="export-row"><label for="exportSize">SIZE</label><select id="exportSize"><option value="1800">1800</option><option value="2600" selected>2600</option><option value="3200">3200</option></select></div>
+      </section>
+    </section>
+
+    <aside class="edge-label" aria-hidden="true">GHOST KIOSK / IMAGE UNIT</aside>
+
+    <div class="engine-hooks" aria-hidden="true">
+      <span id="imageMeta">SOURCE / NONE</span><span id="variationMeta">VARIATION / —</span>
+      <span id="modeDescription"></span><span id="statusText" role="status">READY / ADD A PHOTO</span>
+    </div>
+    <div id="errorPanel" class="error-panel" role="alert" hidden><strong>IMAGE ERROR</strong><span id="errorDetail"></span></div>
+  </main>
+
+  <input id="photoInput" type="file" accept="image/*" hidden>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.min.js"></script>
+  <script src="./sketch.js"></script>
+  <script>if ('serviceWorker' in navigator) { window.addEventListener('load', function(){ navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(function(e){ console.warn('SW',e); }); }); }</script>
+  <script>
+    window.addEventListener('load',function(){setTimeout(function(){if(window.PM_BOOT_OK)return;var p=document.getElementById('errorPanel'),d=document.getElementById('errorDetail');if(!p||!d)return;d.textContent=!window.PM_SCRIPT_LOADED?'sketch.js could not be loaded':typeof window.p5!=='function'?'p5.js could not be loaded':!window.PM_ENGINE_STARTED?'engine could not start':'setup did not complete';p.hidden=false},10000)});
+  </script>
+</body>
+</html>

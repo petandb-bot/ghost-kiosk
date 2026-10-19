@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#c9c7c2"/>
+  <rect x="42" y="42" width="428" height="428" fill="none" stroke="#111111" stroke-width="6"/>
+  <rect x="337" y="54" width="113" height="142" fill="#efafb8"/>
+  <g transform="translate(256 260) rotate(-6) translate(-256 -260)">
+    <rect x="102" y="108" width="292" height="292" fill="none" stroke="#111111" stroke-width="5"/>
+    <rect x="154" y="70" width="72" height="344" fill="#e9e7e1" stroke="#111111" stroke-width="5" transform="rotate(10 190 242)"/>
+    <path d="M118 310 C171 218 313 166 395 207 C342 225 316 262 314 320 C250 292 185 296 118 310Z" fill="#111111"/>
+    <path d="M153 151 C212 122 320 128 376 169 C313 171 269 195 238 243 C216 205 187 174 153 151Z" fill="#f3f1eb" stroke="#111111" stroke-width="7"/>
+    <ellipse cx="247" cy="247" rx="88" ry="69" fill="#f1f0eb" stroke="#111111" stroke-width="9"/>
+    <ellipse cx="270" cy="237" rx="51" ry="41" fill="#abc0d6" stroke="#111111" stroke-width="7"/>
+    <circle cx="270" cy="237" r="16" fill="#f5f3ed" stroke="#111111" stroke-width="6"/>
+    <rect x="336" y="334" width="72" height="26" fill="#efafb8" stroke="#111111" stroke-width="5" transform="rotate(-17 372 347)"/>
+    <path d="M89 360 L181 331 L167 385 Z" fill="#111111"/>
+  </g>
+  <text x="58" y="92" font-family="Arial, Helvetica, sans-serif" font-size="33" font-weight="900" fill="#111111">GK</text>
+  <text x="58" y="450" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="900" letter-spacing="2" fill="#111111">GHOST KIOSK</text>
+</svg>
