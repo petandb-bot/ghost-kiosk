@@ -1,7 +1,7 @@
 'use strict';
 window.PM_SCRIPT_LOADED = true;
 const PM = {
-  version: 'v1.7.2.3',
+  version: 'v1.7.2.4',
   previewMobile: 900,
   previewDesktop: 1180,
   sourceMaxPixels: 9000000,
