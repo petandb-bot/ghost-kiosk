@@ -1,4 +1,4 @@
-const CACHE='ghost-kiosk-v1.7.2.1';
+const CACHE='ghost-kiosk-v1.7.2.2';
 const LOCAL=['./','./index.html','./style.css','./sketch.js','./manifest.webmanifest','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'];
 const P5_URL='https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.min.js';
 
