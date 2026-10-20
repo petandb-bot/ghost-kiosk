@@ -1,6 +1,6 @@
 
 /*
- * GHOST KIOSK v1.7.1 — STREET DREAM / HIDDEN VARIATION — interface revision / engine from v1.5.1 GHOST ANOMALY
+ * GHOST KIOSK v1.7.2 — ORGANIC BORDER / HIDDEN VARIATION — edge repair
  * 4つの独立した変異エンジン + 共通の写真構造解析
  * common structure -> mode event -> mode mutation -> mode color / phenomena
  *
@@ -16,7 +16,7 @@
 window.PM_SCRIPT_LOADED = true;
 
 const PM = {
-  version: 'v1.7.1',
+  version: 'v1.7.2',
   previewMobile: 900,
   previewDesktop: 1180,
   sourceMaxPixels: 9000000,
@@ -140,7 +140,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)) + uSeed*0.00013)*43758.5453123); }
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=0.56*noise2(p);v+=0.28*noise2(p*2.03+11.17);v+=0.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(0.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 vec2 flow(vec2 uv,vec2 phase,float scale){return vec2(fbm(uv*scale+phase),fbm(uv*scale+phase+vec2(8.31,21.7)))-0.5;}
 void main(){
@@ -155,8 +167,10 @@ void main(){
   vec2 er=uv-vec2(uEventCtl.z,uEventCtl.w); float erLen=max(length(er),.001);
   float liquidLens=(1.-smoothstep(.08,.52,erLen))*smoothstep(.68,.98,wild);
   disp+=(er/erLen)*sin(erLen*(18.+10.*scaleGain)+uSeed*.0017)*(.010+.018*t)*liquidLens*spatial;
+  disp=edgeCondition(uv,disp);
   vec3 base=photo(uv); vec3 warped=photo(uv+disp);
   vec2 slip=vec2(-f1.y,f1.x)*(0.008+0.042*t)*(0.25+0.75*e.a)*(0.65+0.35*(1.-st.a))*mix(.76,1.34,wild);
+  slip=edgeCondition(uv,slip);
   vec3 softSlip=photo(uv+slip);
   vec3 outC=mix(base,warped,clamp((0.23+0.62*t)*(.86+.15*spatial),0.,0.95));
   outC=mix(outC,softSlip,e.b*(0.06+0.24*d));
@@ -185,7 +199,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)) + uSeed*0.00013)*43758.5453123); }
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=0.56*noise2(p);v+=0.28*noise2(p*2.03+11.17);v+=0.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(0.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 float lum(vec3 c){return dot(c,vec3(0.2126,0.7152,0.0722));}
 vec3 palette(float t,vec3 a,vec3 b,vec3 c){float k=clamp(t,0.,1.);return k<0.5?mix(a,b,k*2.):mix(b,c,(k-0.5)*2.);}
@@ -288,7 +314,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*0.00013)*43758.5453123);}
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=.56*noise2(p);v+=.28*noise2(p*2.03+11.17);v+=.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 vec2 flow(vec2 uv,vec2 ph,float s){return vec2(fbm(uv*s+ph),fbm(uv*s+ph+vec2(8.31,21.7)))-.5;}
 void main(){
@@ -299,8 +337,10 @@ void main(){
   vec2 pull=(toward*(0.010+0.062*t)*e.r*background + f*(0.012+0.055*t)*(0.25+0.75*e.g)*background)*spatial;
   vec2 sideways=vec2(-f.y,f.x)*(0.006+0.030*t)*e.a*mix(.82,1.42,wild);
   float sinkPocket=smoothstep(.73,.98,wild)*e.b*(1.-st.a*.48); pull+=toward*(.012+.038*d)*sinkPocket*spatial;
-  vec3 base=photo(uv); vec3 sink=photo(uv+pull+sideways); vec3 outC=mix(base,sink,0.25+0.52*t);
-  vec3 shadowDrift=photo(uv-pull*0.85+f2*0.012); outC=mix(outC,shadowDrift,e.b*(0.05+0.18*d));
+  vec2 occultShift=edgeCondition(uv,pull+sideways);
+  vec3 base=photo(uv); vec3 sink=photo(uv+occultShift); vec3 outC=mix(base,sink,0.25+0.52*t);
+  vec2 shadowShift=edgeCondition(uv,-pull*0.85+f2*0.012);
+  vec3 shadowDrift=photo(uv+shadowShift); outC=mix(outC,shadowDrift,e.b*(0.05+0.18*d));
   gl_FragColor=vec4(clamp(outC,0.,1.),1.);
 }
 `,
@@ -326,7 +366,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*.00013)*43758.5453123);}
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=.56*noise2(p);v+=.28*noise2(p*2.03+11.17);v+=.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 float lum(vec3 c){return dot(c,vec3(.2126,.7152,.0722));}
 vec3 palette(float t,vec3 a,vec3 b,vec3 c){float k=clamp(t,0.,1.);return k<.5?mix(a,b,k*2.):mix(b,c,(k-.5)*2.);}
@@ -412,7 +464,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*.00013)*43758.5453123);}
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=.56*noise2(p);v+=.28*noise2(p*2.03+11.17);v+=.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 vec2 flow(vec2 uv,vec2 ph,float s){return vec2(fbm(uv*s+ph),fbm(uv*s+ph+vec2(8.31,21.7)))-.5;}
 void main(){
@@ -422,11 +486,15 @@ void main(){
   if(kind>1.5&&kind<2.5)disp+=axis*sign(phase)*(.014+.060*t)*e.g*(.30+.70*smoothstep(.20,.78,abs(phase)));
   if(kind>3.5&&kind<4.5)disp+=normal*(.012+.052*t)*(e.b*.55+e.g*.28)*sign(phase+.001)*spatial;
   float phasePocket=smoothstep(.70,.98,wild)*e.r*(1.-st.a*.44); disp+=normal*sign(phase+.001)*(.010+.040*t)*phasePocket*spatial;
+  disp=edgeCondition(uv,disp);
   vec3 outC=photo(uv+disp);
   vec2 center=vec2(uEventCtl.z,uEventCtl.w),rel=(uv-center)*vec2(.94,1.08); float rr=max(length(rel),.0008);vec2 dir=rel/rr,tangent=vec2(-dir.y,dir.x);float cavity=e.b*(.22+.78*d)*(.55+.45*uEventCtl.y)*eventGain;
-  vec2 fillShift=dir*(.018+.090*d)*(.45+.55*e.r)+tangent*(f1.y*.040+phase*.012); vec3 surroundA=photo(uv+fillShift),surroundB=photo(uv-fillShift*.62+f2*.018);vec3 surround=mix(surroundA,surroundB,.34+.22*e.a);
+  vec2 fillShift=dir*(.018+.090*d)*(.45+.55*e.r)+tangent*(f1.y*.040+phase*.012);
+  fillShift=edgeCondition(uv,fillShift);
+  vec2 fillShiftB=edgeCondition(uv,-fillShift*.62+f2*.018);
+  vec3 surroundA=photo(uv+fillShift),surroundB=photo(uv+fillShiftB);vec3 surround=mix(surroundA,surroundB,.34+.22*e.a);
   float fillAmount=cavity*(.30+.38*d);if(kind<.5)fillAmount*=1.35;else if(kind<1.5)fillAmount*=.62;else if(kind>3.5&&kind<4.5)fillAmount*=1.12;else if(kind>4.5)fillAmount*=.42;outC=mix(outC,surround,clamp(fillAmount,0.,.82));
-  float hollow=cavity*(.35+.65*(1.-st.r))*(.45+.55*(1.-st.a));vec3 lowDetail=mix(surround,photo(uv+normal*(.022+.035*d)+f1*.015),.42);outC=mix(outC,lowDetail,hollow*(.10+.26*d));
+  float hollow=cavity*(.35+.65*(1.-st.r))*(.45+.55*(1.-st.a));vec2 hollowShift=edgeCondition(uv,normal*(.022+.035*d)+f1*.015);vec3 lowDetail=mix(surround,photo(uv+hollowShift),.42);outC=mix(outC,lowDetail,hollow*(.10+.26*d));
   gl_FragColor=vec4(clamp(outC,0.,1.),1.);
 }
 `,
@@ -452,7 +520,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*.00013)*43758.5453123);}
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=.56*noise2(p);v+=.28*noise2(p*2.03+11.17);v+=.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 float lum(vec3 c){return dot(c,vec3(.2126,.7152,.0722));}
 vec3 screenC(vec3 a,vec3 b){return 1.-(1.-a)*(1.-b);}
@@ -538,7 +618,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*.00013)*43758.5453123);}
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=.56*noise2(p);v+=.28*noise2(p*2.03+11.17);v+=.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 vec2 flow(vec2 uv,vec2 ph,float s){return vec2(fbm(uv*s+ph),fbm(uv*s+ph+vec2(8.31,21.7)))-.5;}
 float blob(vec2 uv,vec2 c,float r){vec2 d=uv-c;return exp(-dot(d,d)/max(r*r,.0005));}
@@ -552,7 +644,10 @@ void main(){
   vec2 warp=((dir1*w1+dir2*w2+dir3*w3)/ws)*(.010+.095*t+.035*d)*freedom*spatial;
   warp+=(f*(.010+.055*t)*e.r*freedom+vec2(-f2.y,f2.x)*(.006+.028*t)*e.b)*spatial;
   float foldBurst=smoothstep(.72,.98,wild)*e.g*(1.-st.a*.42); warp+=vec2(-f.y,f.x)*(.010+.036*t)*foldBurst*spatial;
-  vec3 orig=photo(uv),moved=photo(uv+warp),counter=photo(uv-warp*.46+f2*.012);
+  // Organic border repair: large mutations remain in the center, while the frame bends tangentially instead of smearing an edge pixel.
+  warp=edgeCondition(uv,warp);
+  vec2 counterShift=edgeCondition(uv,-warp*.46+f2*.012);
+  vec3 orig=photo(uv),moved=photo(uv+warp),counter=photo(uv+counterShift);
   float stitch=e.b*(.18+.44*d)*materialGain;vec3 reformed=mix(moved,counter,stitch*.34);reformed=mix(reformed,orig,(1.-e.g)*(.06+.11*(1.-t)));
   float amount=clamp((.24+.56*t+.10*d)*(.82+.18*spatial),0.,.96);vec3 outC=mix(orig,reformed,amount);
   gl_FragColor=vec4(clamp(outC,0.,1.),1.);
@@ -580,7 +675,19 @@ uniform vec4 uHiddenB; // color / exposure / polarity / wildness
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7))+uSeed*.00013)*43758.5453123);}
 float noise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1.,0.)),c=hash(i+vec2(0.,1.)),d=hash(i+vec2(1.,1.));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
 float fbm(vec2 p){float v=0.;v+=.56*noise2(p);v+=.28*noise2(p*2.03+11.17);v+=.16*noise2(p*4.03+37.4);return v;}
-vec2 safeUv(vec2 uv){vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.)),vec2(.0006));return clamp(uv,m,1.-m);}
+vec2 safeUv(vec2 uv){
+  // Shader-side mirrored fold. Unlike CLAMP_TO_EDGE it never stretches one border pixel into a stripe.
+  vec2 q=mod(uv,2.0);
+  q=mix(q,2.0-q,step(vec2(1.0),q));
+  vec2 m=max(vec2(1.5)/max(uSourceSize,vec2(1.0)),vec2(0.0006));
+  return clamp(q,m,1.0-m);
+}
+vec2 edgeCondition(vec2 uv,vec2 delta){
+  // Keep the transformation alive at the frame, but progressively turn its outward component down.
+  float gx=smoothstep(0.018,0.145,min(uv.x,1.0-uv.x));
+  float gy=smoothstep(0.018,0.145,min(uv.y,1.0-uv.y));
+  return delta*vec2(0.18+0.82*gx,0.18+0.82*gy);
+}
 vec3 photo(vec2 uv){return texture2D(uSource,safeUv(uv)).rgb;}
 float lum(vec3 c){return dot(c,vec3(.2126,.7152,.0722));}
 vec3 palette(float t,vec3 a,vec3 b,vec3 c){float k=clamp(t,0.,1.);return k<.5?mix(a,b,k*2.):mix(b,c,(k-.5)*2.);}
@@ -621,9 +728,11 @@ float lum(vec3 c){return dot(c,vec3(0.2126,0.7152,0.0722));}
 void main(){
   vec2 uv=vUv;
   vec2 stepUV=vec2(2.0,2.0)/max(uSourceSize,vec2(1.0));
+  vec2 q1=mod(uv+stepUV*(1.0+7.0*uTransform),2.0);q1=mix(q1,2.0-q1,step(vec2(1.0),q1));
+  vec2 q2=mod(uv-stepUV*(1.0+6.0*uDepth),2.0);q2=mix(q2,2.0-q2,step(vec2(1.0),q2));
   vec3 a=texture2D(uSource,uv).rgb;
-  vec3 b=texture2D(uSource,clamp(uv+stepUV*(1.0+7.0*uTransform),0.0,1.0)).rgb;
-  vec3 c=texture2D(uSource,clamp(uv-stepUV*(1.0+6.0*uDepth),0.0,1.0)).rgb;
+  vec3 b=texture2D(uSource,q1).rgb;
+  vec3 c=texture2D(uSource,q2).rgb;
   float f=clamp(lum(a),0.0,1.0);
   float mask=smoothstep(0.08,0.90, f*0.5+uRecipeA.x*0.15+uTransform*0.22);
   vec3 mixed=mix(a,mix(b,c,0.5),clamp((uTransform+uDepth)*0.28,0.0,0.65)*mask);
@@ -689,7 +798,7 @@ function launchEngine() {
       p.windowResized = function() { requestRender(); };
     });
   } catch (e) {
-    console.error('[GHOST KIOSK v1.7.1] instance startup', e);
+    console.error('[GHOST KIOSK v1.7.2] instance startup', e);
     showFatalError(e, 'P5 INSTANCE');
   }
 }
@@ -701,7 +810,7 @@ function initializeCanvas(p) {
     connectUI();
     uiConnected = true;
   } catch(e) {
-    console.error('[GHOST KIOSK v1.7.1] UI setup', e);
+    console.error('[GHOST KIOSK v1.7.2] UI setup', e);
     showFatalError(e, 'UI');
     return;
   }
@@ -717,7 +826,7 @@ function initializeCanvas(p) {
     dead = false;
     setStatus(gpu.safeMode ? 'READY / SAFE GPU MODE / ADD A PHOTO' : 'READY / ADD A PHOTO');
   } catch(e) {
-    console.error('[GHOST KIOSK v1.7.1] GPU setup', e);
+    console.error('[GHOST KIOSK v1.7.2] GPU setup', e);
     showFatalError(e, 'GPU');
   }
 }
@@ -786,7 +895,7 @@ function initializeGPU(){
     gpu.structureProgram=buildProgram(STRUCTURE_FRAG);
     createModePrograms(currentMode);
   }catch(e){
-    console.warn('[GHOST KIOSK v1.7.1] GPU フォールバック',e);
+    console.warn('[GHOST KIOSK v1.7.2] GPU フォールバック',e);
     if(gpu.structureProgram) gl.deleteProgram(gpu.structureProgram.program);
     gpu.structureProgram=null;
     gpu.safeProgram=buildProgram(SAFE_FRAG);
@@ -1029,7 +1138,7 @@ async function loadPhoto(file){
     setStatus('PHOTO LOADED / RENDERING');
     requestRender();
   }catch(e){
-    console.error('[GK v1.7.1] photo load',e);
+    console.error('[GK v1.7.2] photo load',e);
     const message = e && e.message ? e.message : String(e);
     setStatus('LOAD ERROR / '+message);
     const panel = document.getElementById('errorPanel');
@@ -1083,10 +1192,10 @@ function runPipeline(passSet,finalTarget,w,h){
 }
 function targetDimensions(longEdge, maxPixels){ let scale=Math.min(1,longEdge/Math.max(sourceWidth,sourceHeight)); if(sourceWidth*sourceHeight*scale*scale>maxPixels) scale=Math.sqrt(maxPixels/(sourceWidth*sourceHeight)); return {w:Math.max(1,Math.round(sourceWidth*scale)), h:Math.max(1,Math.round(sourceHeight*scale))}; }
 function desiredPreview(){ const mobile=window.matchMedia('(max-width:740px), (pointer:coarse)').matches; const longEdge=mobile?PM.previewMobile:PM.previewDesktop; return targetDimensions(longEdge,1400000); }
-function requestRender(){ if(renderPending||dead||!sourceImage||exportBusy) return; renderPending=true; requestAnimationFrame(()=>{ renderPending=false; if(dead||!sourceImage||exportBusy) return; try{ const dims=desiredPreview(); if(lastView.w!==dims.w||lastView.h!==dims.h){ appP5.resizeCanvas(dims.w,dims.h,true); lastView=dims; } if(!gpu.safeMode) gpu.previewPasses=ensurePassSet(gpu.previewPasses,dims.w,dims.h); runPipeline(gpu.previewPasses,null,dims.w,dims.h); setStatus(`READY / ${currentMode} / SEED ${seedHex(variant.seed)}${gpu.safeMode ? ' / SAFE GPU' : ''}`); }catch(e){ console.error('[GK v1.7.1] render error',e); setStatus('RENDER ERROR / ' + e.message); const panel=document.getElementById('errorPanel'); const detail=document.getElementById('errorDetail'); if(panel&&detail){detail.textContent='RENDER ERROR / '+e.message;panel.hidden=false;} } }); }
+function requestRender(){ if(renderPending||dead||!sourceImage||exportBusy) return; renderPending=true; requestAnimationFrame(()=>{ renderPending=false; if(dead||!sourceImage||exportBusy) return; try{ const dims=desiredPreview(); if(lastView.w!==dims.w||lastView.h!==dims.h){ appP5.resizeCanvas(dims.w,dims.h,true); lastView=dims; } if(!gpu.safeMode) gpu.previewPasses=ensurePassSet(gpu.previewPasses,dims.w,dims.h); runPipeline(gpu.previewPasses,null,dims.w,dims.h); setStatus(`READY / ${currentMode} / SEED ${seedHex(variant.seed)}${gpu.safeMode ? ' / SAFE GPU' : ''}`); }catch(e){ console.error('[GK v1.7.2] render error',e); setStatus('RENDER ERROR / ' + e.message); const panel=document.getElementById('errorPanel'); const detail=document.getElementById('errorDetail'); if(panel&&detail){detail.textContent='RENDER ERROR / '+e.message;panel.hidden=false;} } }); }
 function pixelsToCanvas(raw,w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d'); if(!ctx) throw new Error('EXPORT 2D CANVAS FAILED'); const img=ctx.createImageData(w,h); const stride=w*4; for(let y=0;y<h;y++){ const from=(h-1-y)*stride, to=y*stride; img.data.set(raw.subarray(from,from+stride),to);} ctx.putImageData(img,0,0); return c; }
 function toBlob(c){ return new Promise((resolve,reject)=>c.toBlob(b=>b?resolve(b):reject(new Error('PNG ENCODE FAILED')),'image/png')); }
-async function exportImage(){ if(exportBusy||dead||!sourceImage||!variant) return; exportBusy=true; ui.saveButton.disabled=true; showBusy('GPU EXPORT'); let passSet=null,dest=null; try{ const mobile=window.matchMedia('(max-width:740px), (pointer:coarse)').matches; const maxPixels=mobile?PM.exportMaxPixelsMobile:PM.exportMaxPixelsDesktop; const limits=Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)); const dims=targetDimensions(Math.min(Number(ui.exportSize.value), limits), maxPixels); setStatus(`EXPORTING / ${dims.w} × ${dims.h}`); if(!gpu.safeMode) passSet=ensurePassSet(null,dims.w,dims.h); dest=newRenderTarget(dims.w,dims.h); runPipeline(passSet,dest,dims.w,dims.h); gl.bindFramebuffer(gl.FRAMEBUFFER,dest.framebuffer); const raw=new Uint8Array(dims.w*dims.h*4); gl.readPixels(0,0,dims.w,dims.h,gl.RGBA,gl.UNSIGNED_BYTE,raw); const err=gl.getError(); gl.bindFramebuffer(gl.FRAMEBUFFER,null); if(err!==gl.NO_ERROR) throw new Error('PIXEL READ ERROR ' + err); const png=await toBlob(pixelsToCanvas(raw,dims.w,dims.h)); const url=URL.createObjectURL(png); const name=`GHOST_KIOSK_${currentMode}_${seedHex(variant.seed)}.png`; const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),30000); setStatus(`PNG READY / ${dims.w} × ${dims.h}`); }catch(e){ console.error('[GK v1.7.1] export',e); setStatus('EXPORT ERROR / ' + e.message); alert('書き出しに失敗しました。1800pxを選択して再試行してください。\n' + e.message); }finally{ if(dest) destroyTarget(dest); destroyPassSet(passSet); exportBusy=false; ui.saveButton.disabled=false; hideBusy(); requestRender(); } }
+async function exportImage(){ if(exportBusy||dead||!sourceImage||!variant) return; exportBusy=true; ui.saveButton.disabled=true; showBusy('GPU EXPORT'); let passSet=null,dest=null; try{ const mobile=window.matchMedia('(max-width:740px), (pointer:coarse)').matches; const maxPixels=mobile?PM.exportMaxPixelsMobile:PM.exportMaxPixelsDesktop; const limits=Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)); const dims=targetDimensions(Math.min(Number(ui.exportSize.value), limits), maxPixels); setStatus(`EXPORTING / ${dims.w} × ${dims.h}`); if(!gpu.safeMode) passSet=ensurePassSet(null,dims.w,dims.h); dest=newRenderTarget(dims.w,dims.h); runPipeline(passSet,dest,dims.w,dims.h); gl.bindFramebuffer(gl.FRAMEBUFFER,dest.framebuffer); const raw=new Uint8Array(dims.w*dims.h*4); gl.readPixels(0,0,dims.w,dims.h,gl.RGBA,gl.UNSIGNED_BYTE,raw); const err=gl.getError(); gl.bindFramebuffer(gl.FRAMEBUFFER,null); if(err!==gl.NO_ERROR) throw new Error('PIXEL READ ERROR ' + err); const png=await toBlob(pixelsToCanvas(raw,dims.w,dims.h)); const url=URL.createObjectURL(png); const name=`GHOST_KIOSK_${currentMode}_${seedHex(variant.seed)}.png`; const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),30000); setStatus(`PNG READY / ${dims.w} × ${dims.h}`); }catch(e){ console.error('[GK v1.7.2] export',e); setStatus('EXPORT ERROR / ' + e.message); alert('書き出しに失敗しました。1800pxを選択して再試行してください。\n' + e.message); }finally{ if(dest) destroyTarget(dest); destroyPassSet(passSet); exportBusy=false; ui.saveButton.disabled=false; hideBusy(); requestRender(); } }
 
 
 // HTMLとJSのロード順序に依存しない起動フック。
