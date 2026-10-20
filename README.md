@@ -1,5 +1,5 @@
 # GHOST KIOSK
 
-A small machine for bad photographs.
+A small machine for unlucky photographs.
 
 Open. Mutate. Save.
